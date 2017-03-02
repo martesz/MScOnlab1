@@ -1,18 +1,17 @@
 package registry.value;
 
-import registry.type.Data;
+import registry.type.CMType;
 
 public class CMVariable {
 	private String name;
-	private Data data;
+	private CMType type;
 	private Direction direction;
 	private Mode mode;
 	private boolean trend;
 
-	public CMVariable(String name, Data data, Direction direction, Mode mode, boolean trend) {
-		super();
+	public CMVariable(String name, CMType type, Direction direction, Mode mode, boolean trend) {
 		this.name = name;
-		this.data = data;
+		this.type = type;
 		this.direction = direction;
 		this.mode = mode;
 		this.trend = trend;
@@ -22,8 +21,8 @@ public class CMVariable {
 		return name;
 	}
 
-	public Data getData() {
-		return data;
+	public CMType getType() {
+		return type;
 	}
 
 	public Direction getDirection() {
