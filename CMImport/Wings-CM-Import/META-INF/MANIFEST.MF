@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Wings-CM-Import
+Bundle-SymbolicName: Wings-CM-Import
+Bundle-Version: 1.0.0.qualifier
+Export-Package: parser,
+ program,
+ registry.type,
+ registry.value,
+ xml.objects
+Require-Bundle: com.bbraun.wings.model,
+ com.bbraun.wings.common,
+ com.bbraun.wings.editor
