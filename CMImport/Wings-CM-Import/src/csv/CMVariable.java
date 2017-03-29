@@ -4,7 +4,7 @@ package csv;
  * 
  * @author kovamr56
  * 
- *         Represents one variable read from the exported csv file.
+ *         Represents one variable read from the exported CSV file.
  *
  */
 public class CMVariable {

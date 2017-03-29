@@ -10,4 +10,5 @@ Export-Package: parser,
  xml.objects
 Require-Bundle: com.bbraun.wings.model,
  com.bbraun.wings.common,
- com.bbraun.wings.editor
+ com.bbraun.wings.editor,
+ com.bbraun.wings.commonmemory.gen

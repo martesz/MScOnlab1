@@ -1,15 +1,18 @@
 package program;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 
+import com.bbraun.wings.commonmemory.gen.model.GenerateOldStyleModelCommand3;
+import com.bbraun.wings.editor.editors.IEditorPlatform;
+import com.bbraun.wings.editor.editors.IEditorPlatformCommandStack;
 import com.bbraun.wings.editor.emfbackref.WingsModel;
+import com.bbraun.wings.editor.impl.BBraunEditor;
 import com.bbraun.wings.editor.util.UtilModelIO;
+import com.bbraun.wings.model.common.OperationMode;
 import com.bbraun.wings.model.common.cmtype.CmAtomicTypeRegistry;
 import com.bbraun.wings.model.common.cmtype.CmNamedType;
 import com.bbraun.wings.model.common.cmtype.CmType;
@@ -17,7 +20,6 @@ import com.bbraun.wings.model.common.cmtype.CmTypeAtomic;
 import com.bbraun.wings.model.common.cmval.CmValue;
 import com.bbraun.wings.model.common.cmval.CmValueRegistry;
 import com.bbraun.wings.model.common.cmval.impl.CmvalFactoryImpl;
-import com.bbraun.wings.model.common.commonmemory.ValueEntry;
 import com.bbraun.wings.model.common.commonmemory.ValueRegistry;
 
 import csv.CMVariable;
@@ -27,58 +29,35 @@ import csv.Reader;
  * 
  * @author kovamr56
  *
- *         Test application that inserts new common memory entries into a model
- *         file.
+ *         Test application, that inserts new common memory entries, read from a
+ *         CSV file, into a model file. First command line argument is the CSV
+ *         file path, second is the Wings model file path. Third argument is the
+ *         treatment mode.
  */
 public class EditorApp {
 	public static void main(String[] args) throws Exception {
-		if (args.length > 1) {
+		if (args.length > 2) {
 			File csvFile = new File(args[0]);
 			File modelFile = new File(args[1]);
+			String mode = args[2];
+
 			WingsModel model = UtilModelIO.loadSingleWingsModel(modelFile, true);
+			EList<OperationMode> modes = model.getValueRegistryCollection().getOperationModeCollection().getModes();
 
-			EList<CmNamedType> types = model.getTypeRegistry().getTypes();
-			EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
-			CmAtomicTypeRegistry atomicTypeRegistry = model.getTypeRegistry().getAtomicTypeRegistry();
-			EList<ValueRegistry> valueRegistries = model.getValueRegistryCollection().getValueRegistries();
-			Map<String, ValueEntry> entries = new HashMap<>();
-
-			CmType tp = null;
-			for (CmNamedType cnt : types) {
-
-				if (cnt.getId().equals("STRING20_DESCR")) {
-					tp = cnt;
+			OperationMode om = null;
+			for (OperationMode operationMode : model.getValueRegistryCollection().getOperationModeCollection()
+					.getModes()) {
+				if (operationMode.getId().equals(mode)) {
+					om = operationMode;
+					break;
 				}
 			}
 
-			CmValue val = new CmvalFactoryImpl().createCmValue();
-			val.setId("flat_teszt");
-			val.setLoad(true);
-			val.setDocumentation("flat value teszt");
-			val.setType(tp);
+			List<CMVariable> newValues = Reader.readCsv(csvFile);
 
-			for (CmValueRegistry cvr : flatValueRegistries) {
-				cvr.getValues().add(val);
-				for (CmValue cmValue : cvr.getValues()) {
-					System.out.println(cmValue);
-				}
-			}
+			insertNewValues(model, newValues, om);
+			//regenerateValueRegistry(model, modelFile);
 
-			for (ValueRegistry vr : valueRegistries) {
-				// vr.getValueEntries().add(ve);
-
-				for (ValueEntry entry : vr.getValueEntries()) {
-					entries.put(entry.getId(), entry);
-				}
-			}
-
-			List<CMVariable> list = Reader.readCsv(csvFile);
-			for (CMVariable cmv : list) {
-				ValueEntry entry = entries.get(cmv.getSignalAttributeTRMTSignalDatabase());
-				if (entry != null) {
-					System.out.println(entry);
-				}
-			}
 			ResourceSet resourceSet = model.getResourceSet();
 			UtilModelIO.saveModel(resourceSet);
 		}
@@ -89,20 +68,20 @@ public class EditorApp {
 	 * values do not already exist in the model.
 	 * 
 	 * @param model
-	 *            The model that we want to insert into
+	 *            The model to be inserted into
 	 * @param newValues
 	 *            The values to be inserted
 	 */
-	public void insertNewValues(WingsModel model, List<CMVariable> newValues) {
+	public static void insertNewValues(WingsModel model, List<CMVariable> newValues, OperationMode om) {
 		EList<CmNamedType> types = model.getTypeRegistry().getTypes();
 		EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
 		CmAtomicTypeRegistry atomicTypeRegistry = model.getTypeRegistry().getAtomicTypeRegistry();
-		CmValueRegistry cmValueRegistry = flatValueRegistries.get(0);
+		CmValueRegistry flatValueRegistry = flatValueRegistries.get(0);
 
 		for (CMVariable var : newValues) {
 			String newId = var.getSignalAttributeTRMTSignalDatabase().toLowerCase();
 			CmValue existing = null;
-			for (CmValue cmValue : cmValueRegistry.getValues()) {
+			for (CmValue cmValue : flatValueRegistry.getValues()) {
 				if (cmValue.getId().equals(newId)) {
 					existing = cmValue;
 					break;
@@ -112,6 +91,7 @@ public class EditorApp {
 
 				CmValue newValue = new CmvalFactoryImpl().createCmValue();
 				newValue.setId(newId);
+				newValue.getTargetModes().add(om);
 				CmType type = null;
 				for (CmNamedType cnt : types) {
 					if (cnt.getId().equals(var.getBBVariableType())) {
@@ -128,16 +108,31 @@ public class EditorApp {
 				if (type != null) {
 					newValue.setType(type);
 					if (flatValueRegistries.size() > 0) {
-
-						cmValueRegistry.getValues().add(newValue);
+						flatValueRegistry.getValues().add(newValue);
+						System.out.println(newValue.getId() + " type: " + newValue.getType().getId() + " inserted");
 					}
 				} else {
 					System.out.println(var.getBBVariableType() + " type does not exist in type registry");
-				}
+				} // One exported CSV file contains variables for one mode
+					// If the variable already exists add the new target mode
+			} else if (existing.getTargetModes().contains(om)) {
+				System.out.println(newId + " with mode " + om.getId() + " already exists in flat value registry");
 			} else {
-				System.out.println(newId + " already exists in flat value registry");
+				existing.getTargetModes().add(om);
+				System.out.println(om.getId() + " target mode added to " + existing.getId());
 			}
 		}
 
+	}
+
+	public static void regenerateValueRegistry(WingsModel model, File file) {
+		EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
+		CmValueRegistry flatValueRegistry = flatValueRegistries.get(0);
+		ValueRegistry valueRegistry = model.getValueRegistryCollection().getValueRegistries().get(0);
+		IEditorPlatform editorPlatform = new BBraunEditor();
+		IEditorPlatformCommandStack commandStack = editorPlatform.getCommonCommandStack();
+		GenerateOldStyleModelCommand3 generateModelCommand = new GenerateOldStyleModelCommand3(editorPlatform,
+				flatValueRegistry, valueRegistry);
+		commandStack.execute(generateModelCommand);
 	}
 }

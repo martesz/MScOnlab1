@@ -12,6 +12,13 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
+/**
+ * 
+ * @author kovamr56
+ * 
+ *         Creates java objects representing CM variables read from a CSV file.
+ *
+ */
 public class Reader {
 
 	public static List<CMVariable> readCsv(File csvFile) throws IOException {
