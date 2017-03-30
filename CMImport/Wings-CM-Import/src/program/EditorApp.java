@@ -8,9 +8,7 @@ import org.eclipse.emf.ecore.resource.ResourceSet;
 
 import com.bbraun.wings.commonmemory.gen.model.GenerateOldStyleModelCommand3;
 import com.bbraun.wings.editor.editors.IEditorPlatform;
-import com.bbraun.wings.editor.editors.IEditorPlatformCommandStack;
 import com.bbraun.wings.editor.emfbackref.WingsModel;
-import com.bbraun.wings.editor.impl.BBraunEditor;
 import com.bbraun.wings.editor.util.UtilModelIO;
 import com.bbraun.wings.model.common.OperationMode;
 import com.bbraun.wings.model.common.cmtype.CmAtomicTypeRegistry;
@@ -43,7 +41,6 @@ public class EditorApp {
 			String mode = args[2];
 
 			WingsModel model = UtilModelIO.loadSingleWingsModel(modelFile, true);
-			EList<OperationMode> modes = model.getValueRegistryCollection().getOperationModeCollection().getModes();
 
 			OperationMode operationMode = null;
 			for (OperationMode om : model.getValueRegistryCollection().getOperationModeCollection().getModes()) {
@@ -56,7 +53,7 @@ public class EditorApp {
 			List<CMVariable> newVariables = Reader.readCsv(csvFile);
 
 			insertNewVariables(model, newVariables, operationMode);
-			regenerateValueRegistry(model, modelFile);
+			regenerateValueRegistry(model);
 
 			ResourceSet resourceSet = model.getResourceSet();
 			UtilModelIO.saveModel(resourceSet);
@@ -127,7 +124,15 @@ public class EditorApp {
 
 	}
 
-	public static void regenerateValueRegistry(WingsModel model, File file) {
+	/**
+	 * 
+	 * @param model
+	 *            The model containing the value registry
+	 * 
+	 *            Regenerates the value registry based on the updated flat value
+	 *            registry
+	 */
+	public static void regenerateValueRegistry(WingsModel model) {
 		EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
 		CmValueRegistry flatValueRegistry = flatValueRegistries.get(0);
 		ValueRegistry valueRegistry = model.getValueRegistryCollection().getValueRegistries().get(0);
@@ -135,5 +140,6 @@ public class EditorApp {
 		GenerateOldStyleModelCommand3 generateModelCommand = new GenerateOldStyleModelCommand3(editorPlatform,
 				flatValueRegistry, valueRegistry);
 		generateModelCommand.doRun();
+		System.out.println("Value registry regenerated");
 	}
 }
