@@ -24,6 +24,7 @@ import com.bbraun.wings.model.common.commonmemory.ValueRegistry;
 
 import csv.CMVariable;
 import csv.Reader;
+import model.EditorPlatformDummy;
 
 /**
  * 
@@ -44,19 +45,18 @@ public class EditorApp {
 			WingsModel model = UtilModelIO.loadSingleWingsModel(modelFile, true);
 			EList<OperationMode> modes = model.getValueRegistryCollection().getOperationModeCollection().getModes();
 
-			OperationMode om = null;
-			for (OperationMode operationMode : model.getValueRegistryCollection().getOperationModeCollection()
-					.getModes()) {
-				if (operationMode.getId().equals(mode)) {
-					om = operationMode;
+			OperationMode operationMode = null;
+			for (OperationMode om : model.getValueRegistryCollection().getOperationModeCollection().getModes()) {
+				if (om.getId().equals(mode)) {
+					operationMode = om;
 					break;
 				}
 			}
 
-			List<CMVariable> newValues = Reader.readCsv(csvFile);
+			List<CMVariable> newVariables = Reader.readCsv(csvFile);
 
-			insertNewValues(model, newValues, om);
-			//regenerateValueRegistry(model, modelFile);
+			insertNewVariables(model, newVariables, operationMode);
+			regenerateValueRegistry(model, modelFile);
 
 			ResourceSet resourceSet = model.getResourceSet();
 			UtilModelIO.saveModel(resourceSet);
@@ -69,16 +69,17 @@ public class EditorApp {
 	 * 
 	 * @param model
 	 *            The model to be inserted into
-	 * @param newValues
+	 * @param newVariables
 	 *            The values to be inserted
 	 */
-	public static void insertNewValues(WingsModel model, List<CMVariable> newValues, OperationMode om) {
+	public static void insertNewVariables(WingsModel model, List<CMVariable> newVariables,
+			OperationMode operationMode) {
 		EList<CmNamedType> types = model.getTypeRegistry().getTypes();
 		EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
 		CmAtomicTypeRegistry atomicTypeRegistry = model.getTypeRegistry().getAtomicTypeRegistry();
 		CmValueRegistry flatValueRegistry = flatValueRegistries.get(0);
 
-		for (CMVariable var : newValues) {
+		for (CMVariable var : newVariables) {
 			String newId = var.getSignalAttributeTRMTSignalDatabase().toLowerCase();
 			CmValue existing = null;
 			for (CmValue cmValue : flatValueRegistry.getValues()) {
@@ -91,7 +92,7 @@ public class EditorApp {
 
 				CmValue newValue = new CmvalFactoryImpl().createCmValue();
 				newValue.setId(newId);
-				newValue.getTargetModes().add(om);
+				newValue.getTargetModes().add(operationMode);
 				CmType type = null;
 				for (CmNamedType cnt : types) {
 					if (cnt.getId().equals(var.getBBVariableType())) {
@@ -115,11 +116,12 @@ public class EditorApp {
 					System.out.println(var.getBBVariableType() + " type does not exist in type registry");
 				} // One exported CSV file contains variables for one mode
 					// If the variable already exists add the new target mode
-			} else if (existing.getTargetModes().contains(om)) {
-				System.out.println(newId + " with mode " + om.getId() + " already exists in flat value registry");
+			} else if (existing.getTargetModes().contains(operationMode)) {
+				System.out.println(
+						newId + " with mode " + operationMode.getId() + " already exists in flat value registry");
 			} else {
-				existing.getTargetModes().add(om);
-				System.out.println(om.getId() + " target mode added to " + existing.getId());
+				existing.getTargetModes().add(operationMode);
+				System.out.println(operationMode.getId() + " target mode added to " + existing.getId());
 			}
 		}
 
@@ -129,10 +131,9 @@ public class EditorApp {
 		EList<CmValueRegistry> flatValueRegistries = model.getValueRegistryCollection().getFlatValueRegistries();
 		CmValueRegistry flatValueRegistry = flatValueRegistries.get(0);
 		ValueRegistry valueRegistry = model.getValueRegistryCollection().getValueRegistries().get(0);
-		IEditorPlatform editorPlatform = new BBraunEditor();
-		IEditorPlatformCommandStack commandStack = editorPlatform.getCommonCommandStack();
+		IEditorPlatform editorPlatform = new EditorPlatformDummy(model);
 		GenerateOldStyleModelCommand3 generateModelCommand = new GenerateOldStyleModelCommand3(editorPlatform,
 				flatValueRegistry, valueRegistry);
-		commandStack.execute(generateModelCommand);
+		generateModelCommand.doRun();
 	}
 }
